@@ -16,6 +16,17 @@ const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
 const extensionSettings = extension_settings[extensionName];
 const defaultSettings = {};
 
+const POPULAR_FONTS = [
+  "Roboto", "Open Sans", "Lato", "Montserrat", "Oswald", "Source Sans Pro",
+  "Slabo 27px", "Raleway", "PT Sans", "Merriweather", "Noto Sans", "Nunito",
+  "Concert One", "Prompt", "Work Sans", "Mukta", "Quicksand", "Karla",
+  "Ubuntu", "Lora", "Rubik", "Fira Sans", "Arvo", "Anton", "Cabin",
+  "Playfair Display", "Pacifico", "Dancing Script", "Shadows Into Light",
+  "Abril Fatface", "Exo 2", "Bree Serif", "Josefin Sans", "Varela Round",
+  "Comfortaa", "Righteous", "Fredoka One", "Poiret One", "Cinzel",
+  "Caveat", "Satisfy", "Great Vibes", "Lobster", "Indie Flower"
+].sort();
+
 // Loads the extension settings if they exist, otherwise initializes them to the defaults.
 async function loadSettings() {
   //Create the settings if they don't exist
@@ -172,12 +183,25 @@ function populateFontNames() {
 }
 
 function addGoogleFont() {
-  const googleFontName = document.getElementById("google_font_name").value;
-  const googleFontLink = document.getElementById("google_font_link").value;
+  let googleFontName = document.getElementById("google_font_name").value.trim();
+  let googleFontLink = document.getElementById("google_font_link").value.trim();
+
+  if (!googleFontName) {
+    if (notificationsEnabled) {
+      toastr.error("Please enter a font name.");
+    }
+    return;
+  }
+
+  // Auto-generate link if missing or if it looks like a specimen URL (browser URL)
+  // This fixes the "NotSameSite" error by ensuring we use the correct API endpoint
+  if (!googleFontLink || googleFontLink.includes("google.com/specimen")) {
+    googleFontLink = `https://fonts.googleapis.com/css2?family=${googleFontName.replace(/ /g, '+')}&display=swap`;
+  }
 
   // Check if a font with the same name already exists in googleFonts
   const existingFont = fontInfo.googleFonts.find(
-    (font) => font.name === googleFontName
+    (font) => font.name.toLowerCase() === googleFontName.toLowerCase()
   );
 
   if (existingFont) {
@@ -195,10 +219,11 @@ function addGoogleFont() {
     // Clear the textarea fields
     document.getElementById("google_font_name").value = "";
     document.getElementById("google_font_link").value = "";
+    $("#google_font_select").val(""); // Reset the dropdown
 
     // Print the updated fontInfo object for testing
     if (notificationsEnabled) {
-      toastr.success("Font added: " + JSON.stringify(googleFontName));
+      toastr.success("Font added: " + googleFontName);
     }
     populateFontNames();
   }
@@ -382,6 +407,22 @@ jQuery(async () => {
   // extension_settings and extensions_settings2 are the left and right columns of the settings menu
   // Left should be extensions that deal with system functions and right should be visual/UI related
   $("#extensions_settings").append(settingsHtml);
+
+  // Populate the popular fonts dropdown
+  const $googleFontSelect = $("#google_font_select");
+  POPULAR_FONTS.forEach(font => {
+      $googleFontSelect.append(new Option(font, font));
+  });
+
+  // Handle dropdown selection
+  $googleFontSelect.on("change", function() {
+      const fontName = $(this).val();
+      if (fontName) {
+          $("#google_font_name").val(fontName);
+          // Automatically set the link
+          $("#google_font_link").val(`https://fonts.googleapis.com/css2?family=${fontName.replace(/ /g, '+')}&display=swap`);
+      }
+  });
 
   // These are examples of listening for events
   $("#google_font_submit_button").on("click", addGoogleFont);
